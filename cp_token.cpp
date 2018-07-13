@@ -1,4 +1,5 @@
 #include "std_lib_facilities.h"
+
 class Token {
 public:
     char kind;
@@ -37,7 +38,7 @@ Token Token_stream::get(){
            {cin.putback(ch);
             double val;
             cin >> val;
-            return Token {'8',val};}
+            return Token {ch,val};}
     }
     return Token{'q'};
 }
@@ -49,9 +50,8 @@ Token_stream ts;
 int main() {
     Token t = ts.get();
     while (t.kind != 'q'){
-        cout<< "Got token" << "of kind" << t.kind << "with val" << t.value << "\n";
+        cout<< "Got token" << "of kind " << t.kind << " with val " << t.value << "\n";
+         t= ts.get();
     }
-    t= ts.get();
     return 0;
 }
-
