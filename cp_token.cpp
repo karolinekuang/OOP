@@ -1,5 +1,14 @@
 #include "std_lib_facilities.h"
 
+const char invalid = 'i';
+const char name = 'a';
+const char number = '8';
+const char quit = 'q';
+const char print = ';';
+
+const string promt =">> ";
+const string result = "= ";
+
 class Token {
 public:
     char kind;
@@ -7,13 +16,14 @@ public:
 };
 
 void print_token(Token t){
-     cout<< "Got token" << " of kind " << t.kind << " with vals " << t.value << "\n";
+    cout<< "Got token" << " of kind " << t.kind << " with vals " << t.value << "\n";
 }
 
 class Token_stream {
 public:
     Token get();
     void putback(Token t);
+    void ignore (char c);
 private:
     Token buffer;
     bool full = {false};
@@ -32,18 +42,32 @@ Token Token_stream::get(){
     char ch;
     cin >>ch;
     switch (ch){
-        case ';': case 'q': case '(': case '+': case ')':
+        case print: case quit: case '(': case '+': case ')':
         case '-': case '*': case '/': case '%':
             return Token {ch};
         case '0': case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8': case '9':
         case '.':
-           {cin.putback(ch);
+        {cin.putback(ch);
             double val;
             cin >> val;
             return Token {'8',val};}
     }
     return Token{'q'};
+}
+
+void Token_stream::ignore(char c){
+    if (full && c == buffer.kind){
+        full =false;
+        return;
+    }
+    full = false;
+    char ch =0;
+    while (cin >> ch){
+        if (ch==c){
+            return;
+        }
+    }
 }
 
 vector <Token> tokens;
@@ -60,8 +84,29 @@ double term(){
 double primary (){
     
     Token t=ts.get();
-    //cout <<"pri: ";
-    //print_token(t);
+    switch (t.kind) {
+        case '(':
+        {
+            double d = expression();
+            t = ts.get();
+            if (t.kind != ')') error("')' expected");
+            return d;
+        }
+        /*case '*':
+        {
+            double c = expression();
+            t=ts.get();
+            return c;
+        }*/
+        case number:
+            return t.value;
+        case '-':
+            return -primary();
+        case '+':
+            return primary();
+        default:
+            error("primary expected");
+    }
     return t.value;
 }
 
@@ -78,36 +123,78 @@ double expression (){
                 left -=term();
                 t=ts.get();
                 break;
+            case '*':
+                left *=term();
+                t=ts.get();
+                break;
+            case '/':
+            {double c = primary();
+                if (c==0){
+                    error ("division by zero\n");
+                }
+                left /=c;
+                t=ts.get();
+                break;
+            }
+            case '%':
+            {double d = primary();
+                if (d==0) error("division by zero\n");
+                left = fmod(left, d);
+                t=ts.get();
+                break;
+            }
             default:
-                //cout <<" in exp, putting back: ";
-                //print_token(t);
                 ts.putback(t);
                 return left;
         }
     }
 }
 
+void clean_up_mess(){
+    while (true){
+        Token t = ts.get();
+        if (t.kind == print){
+            return;
+        }
+    }
+}
+
+void calculate(){
+    while (cin){
+        try{
+            cout << promt;
+            Token t = ts.get();
+            while (t.kind == print)
+                t=ts.get();
+            if (t.kind == quit)
+                return;
+            ts.putback(t);
+            cout << result<< expression() <<"\n";
+        }
+        catch(exception& e){
+            cerr << e.what() <<"\n";
+            clean_up_mess();
+        }
+    }
+}
+
 int main() {
-    try{
-        double val =0.0;
+    double val =0.0;
+    calculate();
+        /*cout << "Enter your calculation: \n";
         while (cin){
             Token t = ts.get();
-            //cout<< "Got token" << " of kind " << t.kind << " with val " << t.value << "\n";
-            if (t.kind=='q'){
+            if (t.kind==quit){
                 break;
             }
-            if (t.kind == ';'){
+            if (t.kind == print){
                 cout << " = "<< val<< '\n';
             }
             else {
                 ts.putback(t);
             }
             val = expression();
-        }
-    }
-    catch(exception e){
-        cout << "error";
-    }
+        }*/
     return 0;
 }
 
