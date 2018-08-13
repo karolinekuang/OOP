@@ -1,0 +1,183 @@
+#include "std_lib_facilities.h"
+#include "token.h"
+#include "parser.h"
+#include "vars.h"
+#include "funcs.h"
+
+double statement(Token_stream& ts)
+{
+    Token t = ts.get();
+    if(t.kind == name) {
+        Token var = t;
+        t = ts.get();
+        if(t.kind == '=') {  
+            double d = expression(ts);
+            set_value(var.name, d);
+            cout << "set value " << var.name << " = ";
+            return d;
+        }
+        else if(t.kind == print) {
+            ts.putback(t);
+            return get_value(var.name);
+        }
+        ts.putback(t);
+        ts.putback(var);
+        return expression(ts);
+    }
+    ts.putback(t);
+    return expression(ts);
+}
+
+double expression (Token_stream& ts){
+    double left = term(ts);
+    Token t = ts.get();
+    while (true){
+        switch (t.kind){
+            case '+':
+                left +=term(ts);
+                t=ts.get();
+                break;
+            case '-':
+                left -=term(ts);
+                t=ts.get();
+                break;
+            case '*':
+                left *=term(ts);
+                t=ts.get();
+                break;
+            case '/':
+            {
+                double c = primary(ts);
+                if (c==0){
+                    error ("division by zero\n");
+                }
+                left /=c;
+                t=ts.get();
+                break;
+            }
+            case '%':
+            {
+                double d = primary(ts);
+                if (d==0) error("division by zero\n");
+                left = fmod(left, d);
+                t=ts.get();
+                break;
+            }
+            case name:
+            {
+                cout <<"bi\n";
+                while(t.kind==name){
+                    cout <<"hi\n";
+                    left *=term(ts);
+                    t=ts.get();
+                    break;
+                }
+            }
+            default:
+                ts.putback(t);
+                return left;
+        }
+    }
+}
+
+double term(Token_stream& ts){
+    double left = expon(ts);
+    Token t = ts.get();
+    
+    while(true) {
+        switch (t.kind) {
+            case '*':
+                left *= expon(ts);
+                t = ts.get();
+                break;
+            case '/':
+            {
+                double d = expon(ts);
+                if (d == 0) error("Error: divide by zero");
+                left /= d;
+                t = ts.get();
+                break;
+            }
+            case '%':
+            {
+                double d = expon(ts);
+                if (d == 0) error("Error: divide by zero");
+                left = fmod(left, d);
+                t = ts.get();
+                break;
+            }
+            default:
+                ts.putback(t);
+                return left;
+        }
+    }
+}
+double facto (Token_stream& ts){
+    double left = primary (ts);
+    Token t = ts.get();
+    double result =1;
+    if (t.kind == '!'){
+        for (int i = 1; i<=left; i++){
+            result*=i;
+        } 
+        return result;
+    } 
+    else {
+        ts.putback(t);
+        return left;
+    }
+}
+double expon (Token_stream& ts){
+    //cout << "in expon\n";
+    double left = facto (ts);
+    Token t = ts.get();
+    if (t.kind == power){
+        double d = primary(ts);
+        return pow(left, d);
+    } 
+    else {
+        ts.putback(t);
+        return left;
+    }
+}
+
+double primary (Token_stream& ts){
+    //cout << "in primary\n";
+    Token t=ts.get();
+    switch (t.kind) {
+        case '(':
+        {
+            double d = expression(ts);
+            t = ts.get();
+            if (t.kind != ')') error("')' expected");
+            return d;
+        }
+        case number:
+            return t.value;
+        case name:
+        {
+            Token next_t = ts.get();
+            if(next_t.kind == '(') {
+                double d = expression(ts);
+                next_t = ts.get();
+                if (next_t.kind != ')') error("')' expected");
+                d = exec_func(t.name, d);
+                return d;
+            }
+            else {
+                ts.putback(next_t);
+                //cout << "got 3";
+                return get_value(t.name);
+            }
+        }
+        case '-':
+            return -primary(ts);
+        case '+':
+            return primary(ts);
+        default:
+            string s(1, t.kind);
+            error("primary expected, got: " + s);
+    }
+    return t.value;
+}
+
